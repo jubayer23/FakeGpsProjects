@@ -1,0 +1,31 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mainlayout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+
+    <com.jmedeisis.bugstick.Joystick
+        android:id="@+id/joystick"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:background="@drawable/joystic_background">
+
+        <!-- You may use any Vi@drawable/bg_baseew here. -->
+        <Button
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:background="@drawable/joystic_handel" />
+
+    </com.jmedeisis.bugstick.Joystick>
+
+    <ImageView
+        android:id="@+id/mover"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/joystick"
+        android:src="@drawable/ic_drag_handle_black_24dp" />
+</LinearLayout>
+
