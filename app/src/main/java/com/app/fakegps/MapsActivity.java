@@ -104,6 +104,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final long FASTEST_INTERVAL =
             MILLISECONDS_PER_SECOND * FASTEST_INTERVAL_IN_SECONDS;
 
+    public boolean isSearchOpen = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -148,9 +150,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onError(Status status) {
                 // TODO: Handle the error.
+                view.setVisibility(View.GONE);
+                autocompleteFragment.setText("");
 
             }
         });
+
+
+
 
         toolbar = (Toolbar) findViewById(R.id.toolbarDSettings);
         toolbar.setTitle(getResources().getString(R.string.app_name));
@@ -216,6 +223,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             testPermission();
         }
     }
+
+
 
     LatLng getNewLatlng(double distance, double angle, double latitude, double longitude) {
 
@@ -483,7 +492,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_search) {
+            isSearchOpen = true;
             view.setVisibility(View.VISIBLE);
+            //view.findViewById(R.id.place_autocomplete_clear_button).setVisibility(View.GONE);
             view.setBackgroundColor(Color.WHITE);
 
         }
@@ -609,5 +620,22 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onResume() {
         super.onResume();
 
+        if(isSearchOpen){
+            isSearchOpen = false;
+            view.setVisibility(View.GONE);
+            autocompleteFragment.setText("");
+        }
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        if(isSearchOpen){
+            isSearchOpen = false;
+            view.setVisibility(View.GONE);
+            autocompleteFragment.setText("");
+        }else{
+            super.onBackPressed();
+        }
     }
 }
