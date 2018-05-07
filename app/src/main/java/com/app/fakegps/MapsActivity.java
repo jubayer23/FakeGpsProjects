@@ -13,7 +13,9 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.location.Address;
 import android.location.Criteria;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.location.LocationProvider;
@@ -38,8 +40,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.app.fakegps.appdata.MydApplication;
+import com.app.fakegps.model.FavLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Status;
@@ -65,13 +71,16 @@ import com.testfairy.TestFairy;
 
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
 import static com.app.fakegps.AppConstants.PREF_NAME;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
         GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener {
+        GoogleApiClient.OnConnectionFailedListener,
+        GoogleMap.OnInfoWindowClickListener{
     LocationRequest mLocationRequest;
     SharedPreferences pref;
     Location mCurrentLocation;
@@ -352,7 +361,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setMyLocationEnabled(true);
         mMap.getUiSettings().setMyLocationButtonEnabled(true);
         mMap.getUiSettings().setZoomControlsEnabled(true);
-
+        mMap.setInfoWindowAdapter(new CustomInfoWindowAdapter());
+        mMap.setOnInfoWindowClickListener(this);
         // Add a marker in Sydney and move the camera
 
         mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
@@ -385,102 +395,180 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             }
         });
-        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
 
-            @Override
-            public void onInfoWindowClick(Marker arg0) {
-                try {
-                    locationManager.addTestProvider(LocationManager.GPS_PROVIDER,
-                            "requiresNetwork" == "",
-                            "requiresSatellite" == "",
-                            "requiresCell" == "",
-                            "hasMonetaryCost" == "",
-                            "supportsAltitude" == "",
-                            "supportsSpeed" == "",
-                            "supportsBearing" == "",
-                            Criteria.POWER_HIGH,
-                            android.location.Criteria.ACCURACY_FINE);
-                    Log.d("SET_MOCK_BEFORE", marker.getPosition().latitude + "--" + marker.getPosition().longitude);
 
-                    mMockGpsProviderTask = new MockGpsProvider();
-                    mMockGpsProviderTask.execute(marker.getPosition());
-                    marker.remove();
 
-                    if (!isMyServiceRunning(joyStick.class, getApplicationContext())) {
-                        startService(new Intent(MapsActivity.this, joyStick.class).putExtra("SCREEN_SIZE", screenWidth).putExtra("SCREEN_DENSITY", deviceDensity));
+    }
 
-                        stopBtn.setVisibility(View.VISIBLE);
-                    }
-                } catch (Exception ee) {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
-                    builder.setMessage("You need to Select Fake Gps as a Mock location app");
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+        Log.d("DEBUG","its called");
+         boolean isThisPlaceAlreadyFav = false;
+         List<FavLocation> favLocations = MydApplication.getInstance().getPrefManger().getFavLocations();
+         int favLocationPositionInArraylist = 0;
+        for (FavLocation favLocation: favLocations){
+            if (favLocation.getLat() == marker.getPosition().latitude &&
+                    favLocation.getLang() == marker.getPosition().longitude){
+                isThisPlaceAlreadyFav = true;
+                break;
+            }
+            favLocationPositionInArraylist++;
+        }
+
+        if (isThisPlaceAlreadyFav){
+           // img_fav.setImageResource(R.drawable.ic_star_border_golden);
+            favLocations.remove(favLocationPositionInArraylist);
+        }else {
+
+            FavLocation favLocation = new FavLocation(result,
+                    marker.getPosition().latitude,
+                    marker.getPosition().longitude);
+
+            //img_fav.setImageResource(R.drawable.ic_star_fill_golden);
+            favLocations.add(favLocation);
+            //favLocationPositionInArraylist = favLocations.size() - 1;
+        }
+        MydApplication.getInstance().getPrefManger().setFavLocations(favLocations);
+        marker.hideInfoWindow();
+        marker.showInfoWindow();
+    }
+
+    /**
+     * Demonstrates customizing the info window and/or its contents.
+     */
+   // private ImageView img_fav;
+    private String result = null;
+    class CustomInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
+
+        // These are both viewgroups containing an ImageView with id "badge" and two TextViews with id
+        // "title" and "snippet".
+        // private final View mWindow;
+
+        private final View mContents;
+
+        CustomInfoWindowAdapter() {
+            //mWindow = getLayoutInflater().inflate(R.layout.custom_info_window, null);
+            mContents = getLayoutInflater().inflate(R.layout.custom_info_contents, null);
+        }
+
+        @Override
+        public View getInfoWindow(Marker marker) {
+            return null;
+        }
+
+        @Override
+        public View getInfoContents(Marker marker) {
+            render(marker, mContents);
+            return mContents;
+        }
+
+        private void render(final Marker marker, View view) {
+
+            Geocoder geocoder = new Geocoder(MapsActivity.this, Locale.getDefault());
+            result = null;
+            try {
+                List<Address> list = geocoder.getFromLocation(
+                        marker.getPosition().latitude, marker.getPosition().longitude, 1);
+                if (list != null && list.size() > 0) {
+                    Address address = list.get(0);
+                    // sending back first address line and locality
+                    result = address.getAddressLine(0) ;
+                }
+            } catch (IOException e) {
+                Log.e("DEBUG", "Impossible to connect to Geocoder", e);
+            }
+
+             boolean isThisPlaceAlreadyFav = false;
+            final List<FavLocation> favLocations = MydApplication.getInstance().getPrefManger().getFavLocations();
+             int favLocationPositionInArraylist = 0;
+            for (FavLocation favLocation: favLocations){
+                if (favLocation.getLat() == marker.getPosition().latitude &&
+                        favLocation.getLang() == marker.getPosition().longitude){
+                    isThisPlaceAlreadyFav = true;
+                    break;
+                }
+                favLocationPositionInArraylist++;
+            }
+
+
+
+
+            // String title = marker.getTitle();
+            TextView titleUi = ((TextView) view.findViewById(R.id.tv_place_name));
+            if (result != null) {
+                // Spannable string allows us to edit the formatting of the text.
+
+                titleUi.setText(result);
+            } else {
+                titleUi.setText("No address found");
+            }
+
+            LinearLayout ll_teleport = view.findViewById(R.id.ll_teleport);
+            ll_teleport.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    startFakeGpsService(marker);
+                }
+            });
+
+            ImageView img_fav = view.findViewById(R.id.img_fav);
+            if (isThisPlaceAlreadyFav){
+                img_fav.setImageResource(R.drawable.ic_star_fill_golden);
+            }else {
+                img_fav.setImageResource(R.drawable.ic_star_border_golden);
+            }
+
+
+
+
+        }
+    }
+
+    private void startFakeGpsService(Marker marker){
+
+        try {
+            locationManager.addTestProvider(LocationManager.GPS_PROVIDER,
+                    "requiresNetwork" == "",
+                    "requiresSatellite" == "",
+                    "requiresCell" == "",
+                    "hasMonetaryCost" == "",
+                    "supportsAltitude" == "",
+                    "supportsSpeed" == "",
+                    "supportsBearing" == "",
+                    Criteria.POWER_HIGH,
+                    android.location.Criteria.ACCURACY_FINE);
+            Log.d("SET_MOCK_BEFORE", marker.getPosition().latitude + "--" + marker.getPosition().longitude);
+
+            mMockGpsProviderTask = new MockGpsProvider();
+            mMockGpsProviderTask.execute(marker.getPosition());
+            marker.remove();
+
+            if (!isMyServiceRunning(joyStick.class, getApplicationContext())) {
+                startService(new Intent(MapsActivity.this, joyStick.class).putExtra("SCREEN_SIZE", screenWidth).putExtra("SCREEN_DENSITY", deviceDensity));
+
+                stopBtn.setVisibility(View.VISIBLE);
+            }
+        } catch (Exception ee) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
+            builder.setMessage("You need to Select Fake Gps as a Mock location app");
 // Add the buttons
-                    builder.setPositiveButton("Settings", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int id) {
-                            startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
-                        }
-                    });
-                    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int id) {
+            builder.setPositiveButton("Settings", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                    startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                }
+            });
+            builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
 
-                        }
-                    });
+                }
+            });
 
 
 // Create the AlertDialog
-                    AlertDialog dialog = builder.create();
-                    dialog.show();
-                }
-            }
-        });
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        }
 
-        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-            @Override
-            public boolean onMarkerClick(Marker marker) {
-                try {
-                    locationManager.addTestProvider(LocationManager.GPS_PROVIDER, false, false,
-                            false, false, true, true, true, 0, 5);
-                    Log.d("SET_MOCK_BEFORE", marker.getPosition().latitude + "--" + marker.getPosition().longitude);
-
-                    mMockGpsProviderTask = new MockGpsProvider();
-                    mMockGpsProviderTask.execute(marker.getPosition());
-                    marker.remove();
-
-                    if (!isMyServiceRunning(joyStick.class, getApplicationContext())) {
-                        startService(new Intent(MapsActivity.this, joyStick.class).putExtra("SCREEN_SIZE", screenWidth).putExtra("SCREEN_DENSITY", deviceDensity));
-
-                        stopBtn.setVisibility(View.VISIBLE);
-                    }
-                } catch (Exception ee) {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
-                    builder.setMessage("You need to Select Fake Gps as a Mock location app");
-// Add the buttons
-                    builder.setPositiveButton("Settings", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int id) {
-                            try {
-
-
-                                startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
-                            } catch (Exception ee) {
-                                Toast.makeText(getApplicationContext(), "Please enable Developer option From Settings", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
-                    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int id) {
-
-                        }
-                    });
-
-
-// Create the AlertDialog
-                    AlertDialog dialog = builder.create();
-                    dialog.show();
-                }
-
-                return false;
-            }
-        });
     }
 
     @Override
