@@ -1,7 +1,6 @@
 package com.app.fakegps;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.app.Dialog;
@@ -24,7 +23,6 @@ import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
@@ -41,6 +39,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.NumberPicker;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -79,7 +78,8 @@ import static com.app.fakegps.AppConstants.PREF_NAME;
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        GoogleMap.OnInfoWindowClickListener {
+        GoogleMap.OnInfoWindowClickListener ,
+        View.OnClickListener{
     LocationRequest mLocationRequest;
     SharedPreferences pref;
     Location mCurrentLocation;
@@ -92,7 +92,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     int screenWidth = 0;
     PlaceAutocompleteFragment autocompleteFragment;
     View view;
-    FloatingActionButton stopBtn;
+    //FloatingActionButton stopBtn;
     private static final String MOCK_GPS_PROVIDER_INDEX = "GpsMockProviderIndex";
     public static MapsActivity mapsActivity;
     private MockGpsProvider mMockGpsProviderTask = null;
@@ -100,6 +100,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FusedLocationProviderClient mFusedLocationClient;
     LocationManager locationManager;
     Location location;
+
+    private ImageView img_stop, img_play;
 
     private GoogleApiClient mGoogleApiClient;
     private static final int MILLISECONDS_PER_SECOND = 1000;
@@ -167,23 +169,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         toolbar = (Toolbar) findViewById(R.id.toolbarDSettings);
         toolbar.setTitle(getResources().getString(R.string.app_name));
-        stopBtn = (FloatingActionButton) findViewById(R.id.stopBtn);
+        //stopBtn = (FloatingActionButton) findViewById(R.id.stopBtn);
+        img_play = findViewById(R.id.img_play);
+        img_play.setOnClickListener(this);
+        img_stop = findViewById(R.id.img_stop);
+        img_stop.setOnClickListener(this);
         setSupportActionBar(toolbar);
         if (isMyServiceRunning(joyStick.class, getApplicationContext())) {
-            stopBtn.setVisibility(View.VISIBLE);
+            //stopBtn.setVisibility(View.VISIBLE);
         }
-        stopBtn.setOnClickListener(new View.OnClickListener() {
-            @SuppressLint("MissingPermission")
-            @Override
-            public void onClick(View view) {
 
-                if (isMyServiceRunning(joyStick.class, getApplicationContext())) {
-                    stopService(new Intent(MapsActivity.this, joyStick.class));
-                }
-                locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
-                stopBtn.setVisibility(View.GONE);
-            }
-        });
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -245,7 +240,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public void movePointer(double angle) {
         if (location != null) {
-            LatLng newlatlng = getNewLatlng(20.0, angle, location.getLatitude(), location.getLongitude());
+            float distance = MydApplication.getInstance().getPrefManger().getMockSpeed();
+            LatLng newlatlng = getNewLatlng(distance, angle, location.getLatitude(), location.getLongitude());
             try {
 
                 mMockGpsProviderTask = new MockGpsProvider();
@@ -356,7 +352,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         mMap.setMyLocationEnabled(true);
         mMap.getUiSettings().setMyLocationButtonEnabled(true);
-        mMap.getUiSettings().setZoomControlsEnabled(true);
+        //mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.setInfoWindowAdapter(new CustomInfoWindowAdapter());
         mMap.setOnInfoWindowClickListener(this);
         // Add a marker in Sydney and move the camera
@@ -379,7 +375,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onMapClick(LatLng point) {
 
                 placeMarker(point);
-
+                zoomToSpecificLocation(point);
             }
         });
 
@@ -439,6 +435,27 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
      */
     // private ImageView img_fav;
     private String favLocationName = null;
+
+    @Override
+    public void onClick(View view) {
+        int id = view.getId();
+
+        if(id == R.id.img_stop){
+            if (isMyServiceRunning(joyStick.class, getApplicationContext())) {
+                stopService(new Intent(MapsActivity.this, joyStick.class));
+            }else{
+                Toast.makeText(this,"You do not have any active mock location now.",Toast.LENGTH_LONG).show();
+            }
+
+            if(locationManager != null)
+            locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
+            Toast.makeText(this,"Mocking stopped successfully.",Toast.LENGTH_LONG).show();
+        }
+
+        if(id == R.id.img_play){
+            startFakeGpsService(marker);
+        }
+    }
 
     class CustomInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
 
@@ -525,6 +542,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
 
+
         }
     }
 
@@ -550,8 +568,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (!isMyServiceRunning(joyStick.class, getApplicationContext())) {
                 startService(new Intent(MapsActivity.this, joyStick.class).putExtra("SCREEN_SIZE", screenWidth).putExtra("SCREEN_DENSITY", deviceDensity));
 
-                stopBtn.setVisibility(View.VISIBLE);
+                //stopBtn.setVisibility(View.VISIBLE);
             }
+            Toast.makeText(this,"Mocking started successfully",Toast.LENGTH_LONG).show();
         } catch (Exception ee) {
             AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
             builder.setMessage("You need to Select Fake Gps as a Mock location app");
@@ -580,7 +599,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         final Dialog dialog_start = new Dialog(this,
                 android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
         dialog_start.setCancelable(true);
-        dialog_start.setContentView(R.layout.dialog_premium_user_alert);
+        dialog_start.setContentView(R.layout.dialog_for_fav_location);
 
         Button btn_cancel = (Button) dialog_start.findViewById(R.id.btn_cancel);
         ImageView img_close_dialog = (ImageView) dialog_start.findViewById(R.id.img_close_dialog);
@@ -629,6 +648,44 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         dialog_start.show();
     }
 
+    private void showDialogForSpeedSet() {
+        final Dialog dialog_start = new Dialog(this,
+                android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
+        dialog_start.setCancelable(true);
+        dialog_start.setContentView(R.layout.dialog_mock_speed);
+
+        Button btn_submit = (Button) dialog_start.findViewById(R.id.btn_submit);
+        ImageView img_close_dialog = (ImageView) dialog_start.findViewById(R.id.img_close_dialog);
+        final NumberPicker np = (NumberPicker) dialog_start.findViewById(R.id.num_picker);
+        np.setMaxValue(25);
+        np.setMinValue(1);
+        np.setWrapSelectorWheel(false);
+        np.setValue(MydApplication.getInstance().getPrefManger().getMockSpeed());
+        np.setOnValueChangedListener(new NumberPicker.OnValueChangeListener() {
+            @Override
+            public void onValueChange(NumberPicker numberPicker, int oldVal, int newVal) {
+                MydApplication.getInstance().getPrefManger().setMockSpeed(newVal);
+            }
+        });
+
+
+        btn_submit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog_start.dismiss();
+            }
+        });
+
+        img_close_dialog.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog_start.dismiss();
+            }
+        });
+
+        dialog_start.show();
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.search_back, menu);
@@ -645,6 +702,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         } else if (item.getItemId() == R.id.action_fav) {
             showDialogFavLocations();
+
+        }else if (item.getItemId() == R.id.action_speed) {
+            showDialogForSpeedSet();
 
         }
         return super.onOptionsItemSelected(item);

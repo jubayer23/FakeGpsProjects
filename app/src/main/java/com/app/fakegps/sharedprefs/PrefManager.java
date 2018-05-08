@@ -40,7 +40,7 @@ public class PrefManager {
 
     private static Gson GSON = new Gson();
 
-    private static final String KEY_NUM_OF_TIME_USER_SET_ALARM = "num_of_time_user_set_alarm";
+    private static final String KEY_MOCK_SPEED = "num_of_time_user_set_alarm";
     private static final String KEY_SET_IS_APP_RUN_FIRST_TIME = "is_app_run_first_time";
     private static final String KEY_FAV_LOCATION = "fav_location";
 
@@ -50,16 +50,16 @@ public class PrefManager {
 
     }
 
-    public void setNumberOfTimeUserSetAlarm(int obj) {
+    public void setMockSpeed(int obj) {
         editor = pref.edit();
 
-        editor.putInt(KEY_NUM_OF_TIME_USER_SET_ALARM, obj);
+        editor.putInt(KEY_MOCK_SPEED, obj);
 
         // commit changes
         editor.commit();
     }
-    public int getNumberOfTimeUserSetAlarm() {
-        return pref.getInt(KEY_NUM_OF_TIME_USER_SET_ALARM,0);
+    public int getMockSpeed() {
+        return pref.getInt(KEY_MOCK_SPEED,20);
     }
 
     public void setIsAppRunFirstTime(boolean obj) {

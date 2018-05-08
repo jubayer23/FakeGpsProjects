@@ -36,4 +36,25 @@
         android:layout_marginBottom="20dp"
         android:src="@android:drawable/ic_menu_close_clear_cancel"
         android:visibility="gone" />
+
+
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_marginBottom="20dp"
+        android:layout_marginLeft="20dp"
+        android:src="@drawable/ic_stop_blue"
+        android:id="@+id/img_stop"/>
+
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="20dp"
+        android:layout_marginRight="20dp"
+        android:src="@drawable/ic_play_arrow_blue"
+        android:id="@+id/img_play"/>
 </RelativeLayout>
