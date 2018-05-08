@@ -4,15 +4,13 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.ActivityManager;
-import android.app.AppOpsManager;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.graphics.PixelFormat;
 import android.location.Address;
 import android.location.Criteria;
 import android.location.Geocoder;
@@ -31,20 +29,24 @@ import android.support.v4.app.ActivityCompat;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.app.fakegps.adapter.ReminderAdapter;
 import com.app.fakegps.appdata.MydApplication;
+import com.app.fakegps.eventListener.RecyclerItemClickListener;
 import com.app.fakegps.model.FavLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -53,7 +55,6 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.places.GeoDataClient;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.Places;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
@@ -63,13 +64,11 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.testfairy.TestFairy;
-
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.List;
@@ -80,7 +79,7 @@ import static com.app.fakegps.AppConstants.PREF_NAME;
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        GoogleMap.OnInfoWindowClickListener{
+        GoogleMap.OnInfoWindowClickListener {
     LocationRequest mLocationRequest;
     SharedPreferences pref;
     Location mCurrentLocation;
@@ -166,8 +165,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
 
-
-
         toolbar = (Toolbar) findViewById(R.id.toolbarDSettings);
         toolbar.setTitle(getResources().getString(R.string.app_name));
         stopBtn = (FloatingActionButton) findViewById(R.id.stopBtn);
@@ -232,7 +229,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             testPermission();
         }
     }
-
 
 
     LatLng getNewLatlng(double distance, double angle, double latitude, double longitude) {
@@ -382,45 +378,50 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onMapClick(LatLng point) {
 
-                if (marker != null) {
-                    marker.remove();
-                }
-
-                marker = mMap.addMarker(new MarkerOptions()
-                        .position(point)
-                        .title("Click to teleport here")
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
-                );
-                marker.showInfoWindow();
+                placeMarker(point);
 
             }
         });
 
 
+    }
 
+    private Marker placeMarker(LatLng latLng) {
+        if (marker != null) {
+            marker.remove();
+        }
+
+        marker = mMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .title("Click to teleport here")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+        );
+        marker.showInfoWindow();
+
+        return marker;
     }
 
     @Override
     public void onInfoWindowClick(Marker marker) {
-        Log.d("DEBUG","its called");
-         boolean isThisPlaceAlreadyFav = false;
-         List<FavLocation> favLocations = MydApplication.getInstance().getPrefManger().getFavLocations();
-         int favLocationPositionInArraylist = 0;
-        for (FavLocation favLocation: favLocations){
+        Log.d("DEBUG", "its called");
+        boolean isThisPlaceAlreadyFav = false;
+        List<FavLocation> favLocations = MydApplication.getInstance().getPrefManger().getFavLocations();
+        int favLocationPositionInArraylist = 0;
+        for (FavLocation favLocation : favLocations) {
             if (favLocation.getLat() == marker.getPosition().latitude &&
-                    favLocation.getLang() == marker.getPosition().longitude){
+                    favLocation.getLang() == marker.getPosition().longitude) {
                 isThisPlaceAlreadyFav = true;
                 break;
             }
             favLocationPositionInArraylist++;
         }
 
-        if (isThisPlaceAlreadyFav){
-           // img_fav.setImageResource(R.drawable.ic_star_border_golden);
+        if (isThisPlaceAlreadyFav) {
+            // img_fav.setImageResource(R.drawable.ic_star_border_golden);
             favLocations.remove(favLocationPositionInArraylist);
-        }else {
+        } else {
 
-            FavLocation favLocation = new FavLocation(result,
+            FavLocation favLocation = new FavLocation(favLocationName,
                     marker.getPosition().latitude,
                     marker.getPosition().longitude);
 
@@ -436,8 +437,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     /**
      * Demonstrates customizing the info window and/or its contents.
      */
-   // private ImageView img_fav;
-    private String result = null;
+    // private ImageView img_fav;
+    private String favLocationName = null;
+
     class CustomInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
 
         // These are both viewgroups containing an ImageView with id "badge" and two TextViews with id
@@ -464,41 +466,45 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         private void render(final Marker marker, View view) {
 
-            Geocoder geocoder = new Geocoder(MapsActivity.this, Locale.getDefault());
-            result = null;
-            try {
-                List<Address> list = geocoder.getFromLocation(
-                        marker.getPosition().latitude, marker.getPosition().longitude, 1);
-                if (list != null && list.size() > 0) {
-                    Address address = list.get(0);
-                    // sending back first address line and locality
-                    result = address.getAddressLine(0) ;
-                }
-            } catch (IOException e) {
-                Log.e("DEBUG", "Impossible to connect to Geocoder", e);
-            }
 
-             boolean isThisPlaceAlreadyFav = false;
+            favLocationName = null;
+            boolean isThisPlaceAlreadyFav = false;
             final List<FavLocation> favLocations = MydApplication.getInstance().getPrefManger().getFavLocations();
-             int favLocationPositionInArraylist = 0;
-            for (FavLocation favLocation: favLocations){
+            int favLocationPositionInArraylist = 0;
+            for (FavLocation favLocation : favLocations) {
                 if (favLocation.getLat() == marker.getPosition().latitude &&
-                        favLocation.getLang() == marker.getPosition().longitude){
+                        favLocation.getLang() == marker.getPosition().longitude) {
                     isThisPlaceAlreadyFav = true;
+                    favLocationName = favLocation.getLocationName();
                     break;
                 }
                 favLocationPositionInArraylist++;
             }
 
 
+            if(!isThisPlaceAlreadyFav){
+                Geocoder geocoder = new Geocoder(MapsActivity.this, Locale.getDefault());
+                try {
+                    List<Address> list = geocoder.getFromLocation(
+                            marker.getPosition().latitude, marker.getPosition().longitude, 1);
+                    if (list != null && list.size() > 0) {
+                        Address address = list.get(0);
+                        // sending back first address line and locality
+                        favLocationName = address.getAddressLine(0);
+                    }
+                } catch (IOException e) {
+                    Log.e("DEBUG", "Impossible to connect to Geocoder", e);
+                }
+            }
+
 
 
             // String title = marker.getTitle();
             TextView titleUi = ((TextView) view.findViewById(R.id.tv_place_name));
-            if (result != null) {
+            if (favLocationName != null) {
                 // Spannable string allows us to edit the formatting of the text.
 
-                titleUi.setText(result);
+                titleUi.setText(favLocationName);
             } else {
                 titleUi.setText("No address found");
             }
@@ -512,19 +518,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
 
             ImageView img_fav = view.findViewById(R.id.img_fav);
-            if (isThisPlaceAlreadyFav){
+            if (isThisPlaceAlreadyFav) {
                 img_fav.setImageResource(R.drawable.ic_star_fill_golden);
-            }else {
+            } else {
                 img_fav.setImageResource(R.drawable.ic_star_border_golden);
             }
-
-
 
 
         }
     }
 
-    private void startFakeGpsService(Marker marker){
+    private void startFakeGpsService(Marker marker) {
 
         try {
             locationManager.addTestProvider(LocationManager.GPS_PROVIDER,
@@ -571,6 +575,60 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
+
+    private void showDialogFavLocations() {
+        final Dialog dialog_start = new Dialog(this,
+                android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
+        dialog_start.setCancelable(true);
+        dialog_start.setContentView(R.layout.dialog_premium_user_alert);
+
+        Button btn_cancel = (Button) dialog_start.findViewById(R.id.btn_cancel);
+        ImageView img_close_dialog = (ImageView) dialog_start.findViewById(R.id.img_close_dialog);
+        RecyclerView recyclerView = (RecyclerView) dialog_start.findViewById(R.id.recycler_view);
+        final List<FavLocation> favLocations = MydApplication.getInstance().getPrefManger().getFavLocations();
+        ReminderAdapter reminderAdapter = new ReminderAdapter(this, favLocations);
+        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(mLayoutManager);
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
+        recyclerView.setAdapter(reminderAdapter);
+        recyclerView.addOnItemTouchListener(
+                new RecyclerItemClickListener(this, recyclerView, new RecyclerItemClickListener.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(View view, int position) {
+                        // do whatever
+                        FavLocation favLocation = favLocations.get(position);
+                        LatLng latLng = new LatLng(favLocation.getLat(), favLocation.getLang());
+                        placeMarker(latLng);
+                        zoomToSpecificLocation(latLng);
+                        dialog_start.dismiss();
+                        //((HomeActivity) getActivity()).proceedToServiceListFragment(category);
+                    }
+
+                    @Override
+                    public void onLongItemClick(View view, int position) {
+                        // do whatever
+                    }
+                })
+        );
+
+
+        btn_cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog_start.dismiss();
+            }
+        });
+
+        img_close_dialog.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog_start.dismiss();
+            }
+        });
+
+        dialog_start.show();
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.search_back, menu);
@@ -584,6 +642,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             view.setVisibility(View.VISIBLE);
             //view.findViewById(R.id.place_autocomplete_clear_button).setVisibility(View.GONE);
             view.setBackgroundColor(Color.WHITE);
+
+        } else if (item.getItemId() == R.id.action_fav) {
+            showDialogFavLocations();
 
         }
         return super.onOptionsItemSelected(item);
@@ -695,6 +756,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return false;
     }
 
+    protected void zoomToSpecificLocation(LatLng latLng) {
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(latLng)      // Sets the center of the map to location user
+                .zoom(20)                   // Sets the zoom
+                .bearing(0)                // Sets the orientation of the camera to east
+                .tilt(0)                   // Sets the tilt of the camera to 30 degrees
+                .build();                   // Creates a CameraPosition from the builder
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+    }
+
     @Override
     protected void onDestroy() {
         if (location != null) {
@@ -708,7 +779,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onResume() {
         super.onResume();
 
-        if(isSearchOpen){
+        if (isSearchOpen) {
             isSearchOpen = false;
             view.setVisibility(View.GONE);
             autocompleteFragment.setText("");
@@ -718,11 +789,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onBackPressed() {
-        if(isSearchOpen){
+        if (isSearchOpen) {
             isSearchOpen = false;
             view.setVisibility(View.GONE);
             autocompleteFragment.setText("");
-        }else{
+        } else {
             super.onBackPressed();
         }
     }
