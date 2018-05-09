@@ -550,6 +550,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void startFakeGpsService(Marker marker) {
 
+        if(marker == null){
+            Toast.makeText(this,"Please select a location first.",Toast.LENGTH_LONG).show();
+            return;
+        }
+
         try {
             locationManager.addTestProvider(LocationManager.GPS_PROVIDER,
                     "requiresNetwork" == "",
@@ -701,6 +706,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             view.setVisibility(View.VISIBLE);
             //view.findViewById(R.id.place_autocomplete_clear_button).setVisibility(View.GONE);
             view.setBackgroundColor(Color.WHITE);
+            View view2 = view.findViewById(R.id.place_autocomplete_search_button);
+            view2.performClick();
 
         } else if (item.getItemId() == R.id.action_fav) {
             showDialogFavLocations();

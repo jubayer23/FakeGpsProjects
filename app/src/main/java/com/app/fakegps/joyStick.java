@@ -163,7 +163,7 @@ public class joyStick extends Service {
                 if (degrees < 0) {
                     degrees = degrees + 360;
                 }
-                if(degrees >= 0 && degrees < 90){
+                /*if(degrees >= 0 && degrees < 90){
                     degrees = 180 - degrees;
                 }else if(degrees > 270 && degrees < 360){
                     degrees = 270 - (degrees - 270);
@@ -175,7 +175,7 @@ public class joyStick extends Service {
                     degrees = 180;
                 }else if(degrees == 180){
                     degrees = 360;
-                }
+                }*/
                 angle = degrees;
 
                // Log.d("DEBUG",String.valueOf(angle));
