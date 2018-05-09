@@ -352,7 +352,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         mMap.setMyLocationEnabled(true);
         mMap.getUiSettings().setMyLocationButtonEnabled(true);
-        //mMap.getUiSettings().setZoomControlsEnabled(true);
+        mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.setInfoWindowAdapter(new CustomInfoWindowAdapter());
         mMap.setOnInfoWindowClickListener(this);
         // Add a marker in Sydney and move the camera
@@ -443,13 +443,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(id == R.id.img_stop){
             if (isMyServiceRunning(joyStick.class, getApplicationContext())) {
                 stopService(new Intent(MapsActivity.this, joyStick.class));
+                if(locationManager != null)
+                    locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
+                Toast.makeText(this,"Mocking stopped successfully.",Toast.LENGTH_LONG).show();
             }else{
                 Toast.makeText(this,"You do not have any active mock location now.",Toast.LENGTH_LONG).show();
             }
 
-            if(locationManager != null)
-            locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
-            Toast.makeText(this,"Mocking stopped successfully.",Toast.LENGTH_LONG).show();
+
+
         }
 
         if(id == R.id.img_play){
