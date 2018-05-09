@@ -375,7 +375,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onMapClick(LatLng point) {
 
                 placeMarker(point);
-                zoomToSpecificLocation(point);
+               // zoomToSpecificLocation(point);
             }
         });
 
