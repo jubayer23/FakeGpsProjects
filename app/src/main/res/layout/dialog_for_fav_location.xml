@@ -13,7 +13,7 @@
         android:layout_height="0dp"
         android:layout_marginLeft="10dp"
         android:layout_marginRight="10dp"
-        android:layout_weight="7"
+        android:layout_weight="4"
         android:background="@drawable/background_rounded_white_border_black"
         android:orientation="vertical"
         android:weightSum="5">
@@ -34,7 +34,7 @@
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="10dp"
-            android:text="Alert"
+            android:text="Select Favourite place"
             android:textStyle="bold"
             android:textColor="@color/black"
             android:textSize="18sp" />
@@ -45,9 +45,8 @@
             android:layout_height="wrap_content"
             android:layout_below="@+id/tv_header"
             android:layout_marginTop="20dp"
-            android:layout_marginLeft="20dp"
-            android:layout_marginRight="20dp"
-            android:layout_marginBottom="60dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
             android:orientation="vertical">
 
             <android.support.v7.widget.RecyclerView
@@ -61,10 +60,19 @@
         </LinearLayout>
 
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tv_no_fav_loc_alert"
+            android:layout_centerInParent="true"
+            android:text="You do not have any favourite place yet!"/>
+
+
         <LinearLayout
             android:id="@+id/ll_container_control_panel"
             android:layout_width="match_parent"
             android:layout_height="60dp"
+            android:visibility="gone"
             android:layout_alignParentBottom="true"
             android:orientation="horizontal">
 

@@ -3,6 +3,7 @@ package com.app.fakegps.appdata;
 import android.app.Application;
 
 import com.app.fakegps.sharedprefs.PrefManager;
+import com.google.android.gms.ads.MobileAds;
 
 
 public class MydApplication extends Application {
@@ -26,6 +27,8 @@ public class MydApplication extends Application {
         this.scale = getResources().getDisplayMetrics().density;
 
         pref = new PrefManager(this);
+
+        MobileAds.initialize(this, "ca-app-pub-5364782604988219~5686491126");
 
     }
 

@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -19,6 +20,7 @@ import android.location.LocationProvider;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Handler;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
@@ -44,9 +46,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.app.fakegps.adapter.ReminderAdapter;
+import com.app.fakegps.alertbanner.NumberPickerDialog;
 import com.app.fakegps.appdata.MydApplication;
 import com.app.fakegps.eventListener.RecyclerItemClickListener;
 import com.app.fakegps.model.FavLocation;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.InterstitialAd;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Status;
@@ -78,8 +84,8 @@ import static com.app.fakegps.AppConstants.PREF_NAME;
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        GoogleMap.OnInfoWindowClickListener ,
-        View.OnClickListener{
+        GoogleMap.OnInfoWindowClickListener,
+        View.OnClickListener {
     LocationRequest mLocationRequest;
     SharedPreferences pref;
     Location mCurrentLocation;
@@ -115,6 +121,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             MILLISECONDS_PER_SECOND * FASTEST_INTERVAL_IN_SECONDS;
 
     public boolean isSearchOpen = false;
+
+
+    private AdView adview_banner;
+    private InterstitialAd mInterstitialAd;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -175,6 +185,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         img_stop = findViewById(R.id.img_stop);
         img_stop.setOnClickListener(this);
         setSupportActionBar(toolbar);
+
+        loadAdview();
+
         if (isMyServiceRunning(joyStick.class, getApplicationContext())) {
             //stopBtn.setVisibility(View.VISIBLE);
         }
@@ -375,7 +388,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onMapClick(LatLng point) {
 
                 placeMarker(point);
-               // zoomToSpecificLocation(point);
+                // zoomToSpecificLocation(point);
             }
         });
 
@@ -440,22 +453,23 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onClick(View view) {
         int id = view.getId();
 
-        if(id == R.id.img_stop){
+        if (id == R.id.img_stop) {
             if (isMyServiceRunning(joyStick.class, getApplicationContext())) {
-                stopService(new Intent(MapsActivity.this, joyStick.class));
-                if(locationManager != null)
-                    locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
-                Toast.makeText(this,"Mocking stopped successfully.",Toast.LENGTH_LONG).show();
-            }else{
-                Toast.makeText(this,"You do not have any active mock location now.",Toast.LENGTH_LONG).show();
+               showAlertDialogForStopMockGps();
+            } else {
+                Toast.makeText(this, "You do not have any active mock location now.", Toast.LENGTH_LONG).show();
             }
-
 
 
         }
 
-        if(id == R.id.img_play){
-            startFakeGpsService(marker);
+        if (id == R.id.img_play) {
+            if (marker == null) {
+                Toast.makeText(this, "Please select a location first.", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            showAlertDialogForStartMockGps();
         }
     }
 
@@ -501,7 +515,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
 
-            if(!isThisPlaceAlreadyFav){
+            if (!isThisPlaceAlreadyFav) {
                 Geocoder geocoder = new Geocoder(MapsActivity.this, Locale.getDefault());
                 try {
                     List<Address> list = geocoder.getFromLocation(
@@ -515,7 +529,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Log.e("DEBUG", "Impossible to connect to Geocoder", e);
                 }
             }
-
 
 
             // String title = marker.getTitle();
@@ -544,16 +557,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
 
-
         }
     }
 
     private void startFakeGpsService(Marker marker) {
 
-        if(marker == null){
-            Toast.makeText(this,"Please select a location first.",Toast.LENGTH_LONG).show();
+        if (marker == null) {
+            Toast.makeText(this, "Please select a location first.", Toast.LENGTH_LONG).show();
             return;
         }
+
 
         try {
             locationManager.addTestProvider(LocationManager.GPS_PROVIDER,
@@ -577,7 +590,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 //stopBtn.setVisibility(View.VISIBLE);
             }
-            Toast.makeText(this,"Mocking started successfully",Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Mocking started successfully", Toast.LENGTH_LONG).show();
+            showProgressDialog("please wait",true,false);
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    dismissProgressDialog();
+                    showInterstitialAds();
+                }
+            }, 2000);
+
         } catch (Exception ee) {
             AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
             builder.setMessage("You need to Select Fake Gps as a Mock location app");
@@ -610,32 +632,44 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         Button btn_cancel = (Button) dialog_start.findViewById(R.id.btn_cancel);
         ImageView img_close_dialog = (ImageView) dialog_start.findViewById(R.id.img_close_dialog);
+        TextView tv_no_fav_loc_alert = (TextView) dialog_start.findViewById(R.id.tv_no_fav_loc_alert);
         RecyclerView recyclerView = (RecyclerView) dialog_start.findViewById(R.id.recycler_view);
         final List<FavLocation> favLocations = MydApplication.getInstance().getPrefManger().getFavLocations();
-        ReminderAdapter reminderAdapter = new ReminderAdapter(this, favLocations);
-        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
-        recyclerView.setLayoutManager(mLayoutManager);
-        recyclerView.setItemAnimator(new DefaultItemAnimator());
-        recyclerView.setAdapter(reminderAdapter);
-        recyclerView.addOnItemTouchListener(
-                new RecyclerItemClickListener(this, recyclerView, new RecyclerItemClickListener.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(View view, int position) {
-                        // do whatever
-                        FavLocation favLocation = favLocations.get(position);
-                        LatLng latLng = new LatLng(favLocation.getLat(), favLocation.getLang());
-                        placeMarker(latLng);
-                        zoomToSpecificLocation(latLng);
-                        dialog_start.dismiss();
-                        //((HomeActivity) getActivity()).proceedToServiceListFragment(category);
-                    }
 
-                    @Override
-                    public void onLongItemClick(View view, int position) {
-                        // do whatever
-                    }
-                })
-        );
+        if(favLocations.isEmpty()){
+            tv_no_fav_loc_alert.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
+        }else{
+            tv_no_fav_loc_alert.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.VISIBLE);
+
+            ReminderAdapter reminderAdapter = new ReminderAdapter(this, favLocations);
+            RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(this);
+            recyclerView.setLayoutManager(mLayoutManager);
+            recyclerView.setItemAnimator(new DefaultItemAnimator());
+            recyclerView.setAdapter(reminderAdapter);
+            recyclerView.addOnItemTouchListener(
+                    new RecyclerItemClickListener(this, recyclerView, new RecyclerItemClickListener.OnItemClickListener() {
+                        @Override
+                        public void onItemClick(View view, int position) {
+                            // do whatever
+                            FavLocation favLocation = favLocations.get(position);
+                            LatLng latLng = new LatLng(favLocation.getLat(), favLocation.getLang());
+                            placeMarker(latLng);
+                            zoomToSpecificLocation(latLng);
+                            dialog_start.dismiss();
+                            //((HomeActivity) getActivity()).proceedToServiceListFragment(category);
+                        }
+
+                        @Override
+                        public void onLongItemClick(View view, int position) {
+                            // do whatever
+                        }
+                    })
+            );
+        }
+
+
 
 
         btn_cancel.setOnClickListener(new View.OnClickListener() {
@@ -656,7 +690,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void showDialogForSpeedSet() {
-        final Dialog dialog_start = new Dialog(this,
+        NumberPickerDialog newFragment = new NumberPickerDialog();
+        newFragment.setValueChangeListener(new NumberPicker.OnValueChangeListener() {
+            @Override
+            public void onValueChange(NumberPicker numberPicker, int i, int newVal) {
+                Log.d("DEBUG", String.valueOf(newVal));
+                MydApplication.getInstance().getPrefManger().setMockSpeed(newVal);
+            }
+        });
+        newFragment.show(getSupportFragmentManager(), "time picker");
+        /*final Dialog dialog_start = new Dialog(this,
                 android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
         dialog_start.setCancelable(true);
         dialog_start.setContentView(R.layout.dialog_mock_speed);
@@ -690,7 +733,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        dialog_start.show();
+        dialog_start.show();*/
     }
 
     @Override
@@ -712,7 +755,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else if (item.getItemId() == R.id.action_fav) {
             showDialogFavLocations();
 
-        }else if (item.getItemId() == R.id.action_speed) {
+        } else if (item.getItemId() == R.id.action_speed) {
             showDialogForSpeedSet();
 
         }
@@ -864,6 +907,114 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             autocompleteFragment.setText("");
         } else {
             super.onBackPressed();
+        }
+    }
+
+
+    private void showAlertDialogForStartMockGps() {
+        android.app.AlertDialog.Builder alertDialog = new android.app.AlertDialog.Builder(this);
+
+        alertDialog.setTitle("Confirm");
+
+        alertDialog.setMessage("Do you want to change GPS location?");
+
+        alertDialog.setPositiveButton("YES", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                startFakeGpsService(marker);
+                dialog.cancel();
+
+            }
+        });
+        alertDialog.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+
+            }
+        });
+
+        alertDialog.show();
+    }
+
+    private void showAlertDialogForStopMockGps() {
+        android.app.AlertDialog.Builder alertDialog = new android.app.AlertDialog.Builder(this);
+
+        alertDialog.setTitle("Confirm");
+
+        alertDialog.setMessage("Do you want to stop Mock location?");
+
+        alertDialog.setPositiveButton("YES", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                stopService(new Intent(MapsActivity.this, joyStick.class));
+                if (locationManager != null)
+                    locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
+                Toast.makeText(MapsActivity.this, "Mocking stopped successfully.", Toast.LENGTH_LONG).show();
+                dialog.cancel();
+
+            }
+        });
+        alertDialog.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+
+            }
+        });
+
+        alertDialog.show();
+    }
+
+
+    private void loadAdview() {
+        adview_banner = findViewById(R.id.adview_banner);
+        AdRequest adRequestBanner = new AdRequest.Builder()
+                .addTestDevice("554FD1C059BF37BF1981C59FF9E1DAE0")
+                .build();
+        adview_banner.loadAd(adRequestBanner);
+
+
+        mInterstitialAd = new InterstitialAd(this);
+        mInterstitialAd.setAdUnitId(getResources().getString(R.string.intertitial_test_ad_unit_id));
+        AdRequest adRequestInterstitial = new AdRequest.Builder().addTestDevice(
+                "554FD1C059BF37BF1981C59FF9E1DAE0").build();
+        mInterstitialAd.loadAd(adRequestInterstitial);
+    }
+
+    public void showInterstitialAds() {
+        if (mInterstitialAd.isLoaded()) {
+            mInterstitialAd.show();
+        } else {
+            mInterstitialAd = new InterstitialAd(this);
+            mInterstitialAd.setAdUnitId(getResources().getString(R.string.intertitial_test_ad_unit_id));
+            AdRequest adRequestInterstitial = new AdRequest.Builder().addTestDevice(
+                    "554FD1C059BF37BF1981C59FF9E1DAE0").build();
+            mInterstitialAd.loadAd(adRequestInterstitial);
+            if (mInterstitialAd.isLoaded()) {
+                mInterstitialAd.show();
+            }
+            Log.d("TAG", "The interstitial wasn't loaded yet.");
+        }
+    }
+
+    private ProgressDialog progressDialog;
+    public void showProgressDialog(String message, boolean isIntermidiate, boolean isCancelable) {
+       /**/
+        if (progressDialog == null) {
+            progressDialog = new ProgressDialog(this);
+        }
+        if (progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        }
+        progressDialog.setIndeterminate(isIntermidiate);
+        progressDialog.setCancelable(isCancelable);
+        progressDialog.setMessage(message);
+        progressDialog.show();
+    }
+
+    public void dismissProgressDialog() {
+        if (progressDialog == null) {
+            return;
+        }
+        if (progressDialog.isShowing()) {
+            progressDialog.dismiss();
         }
     }
 }
