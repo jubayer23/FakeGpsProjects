@@ -25,6 +25,7 @@ public class NumberPickerDialog extends DialogFragment {
         numberPicker.setMinValue(1);
         numberPicker.setMaxValue(25);
         numberPicker.setValue(MydApplication.getInstance().getPrefManger().getMockSpeed());
+        numberPicker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setTitle("Joystick speed (m/s)");

@@ -96,7 +96,7 @@ public class joyStick extends Service {
             }
         }
 
-        PendingIntent intent = PendingIntent.getActivity(this, 0,
+       /* PendingIntent intent = PendingIntent.getActivity(this, 0,
                 notificationIntent, 0);
         NotificationCompat.Builder nBuilder = new NotificationCompat.Builder(this, "com.app.fakegps")
                 .setSmallIcon(R.mipmap.ic_launcher) // notification icon
@@ -113,7 +113,7 @@ public class joyStick extends Service {
         notification.contentIntent = intent;
 
         notification.flags = Notification.FLAG_NO_CLEAR;
-        startForeground(42, notification);
+        startForeground(42, notification);*/
         joystickobj = layoutInflater.inflate(R.layout.joystic, null);
         relativeLayout = joystickobj.findViewById(R.id.mainlayout);
         ImageView mover = (ImageView) joystickobj.findViewById(R.id.mover);
@@ -160,22 +160,20 @@ public class joyStick extends Service {
 
             @Override
             public void onDrag(float degrees, float offset) {
+               // Log.d("DEBUG_d",String.valueOf(degrees));
                 if (degrees < 0) {
                     degrees = degrees + 360;
                 }
-                /*if(degrees >= 0 && degrees < 90){
-                    degrees = 180 - degrees;
+               // Log.d("DEBUG_d2",String.valueOf(degrees));
+                if(degrees >= 0 && degrees < 90){
+                    degrees = 90 - degrees;
                 }else if(degrees > 270 && degrees < 360){
-                    degrees = 270 - (degrees - 270);
+                    degrees = 90 + (360 - degrees);
                 }else if(degrees > 180 && degrees < 270){
-                    degrees = 270 + (270 - degrees);
+                    degrees = 180 + (270 - degrees);
                 }else if(degrees > 90 && degrees < 180){
-                    degrees = 180 - degrees;
-                }else if(degrees == 350){
-                    degrees = 180;
-                }else if(degrees == 180){
-                    degrees = 360;
-                }*/
+                    degrees =  270  + ( 180 - degrees);
+                }
                 angle = degrees;
 
                // Log.d("DEBUG",String.valueOf(angle));

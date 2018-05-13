@@ -80,6 +80,13 @@ import java.util.List;
 import java.util.Locale;
 
 import static com.app.fakegps.AppConstants.PREF_NAME;
+import static java.lang.Math.PI;
+import static java.lang.Math.asin;
+import static java.lang.Math.atan2;
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
+import static java.lang.Math.toDegrees;
+import static java.lang.Math.toRadians;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener,
         GoogleApiClient.ConnectionCallbacks,
@@ -125,6 +132,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private AdView adview_banner;
     private InterstitialAd mInterstitialAd;
+
+    private static int numOfTimeMockStarted = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -241,14 +250,26 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     LatLng getNewLatlng(double distance, double angle, double latitude, double longitude) {
 
-        double dx = distance * Math.cos(Math.toRadians(angle));
+        /*double dx = distance * Math.cos(Math.toRadians(angle));
         double dy = distance * Math.sin(Math.toRadians(angle));
         Log.d("ANGEL", "" + angle + "/" + dx + "/" + dy);
 
         double r_earth = 6378000.0;
         Double new_latitude = latitude + (dy / r_earth) * (180 / Math.PI);
         Double new_longitude = longitude + ((dx / r_earth) * (180 / Math.PI) / Math.cos(latitude));
-        return new LatLng(new_latitude, new_longitude);
+        return new LatLng(new_latitude, new_longitude);*/
+
+        double brngRad = toRadians(angle);
+        double latRad = toRadians(latitude);
+        double lonRad = toRadians(longitude);
+        int earthRadiusInMetres = 6371000;
+        double distFrac = distance / earthRadiusInMetres;
+
+        double latitudeResult = asin(sin(latRad) * cos(distFrac) + cos(latRad) * sin(distFrac) * cos(brngRad));
+        double a = atan2(sin(brngRad) * sin(distFrac) * cos(latRad), cos(distFrac) - sin(latRad) * sin(latitudeResult));
+        double longitudeResult = (lonRad + a + 3 * PI) % (2 * PI) - PI;
+        return new LatLng(toDegrees(latitudeResult), toDegrees(longitudeResult));
+
     }
 
     public void movePointer(double angle) {
@@ -590,13 +611,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 //stopBtn.setVisibility(View.VISIBLE);
             }
-            Toast.makeText(this, "Mocking started successfully", Toast.LENGTH_LONG).show();
+            //Toast.makeText(this, "Mocking started successfully", Toast.LENGTH_LONG).show();
             showProgressDialog("please wait",true,false);
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     dismissProgressDialog();
-                    showInterstitialAds();
+                    if(numOfTimeMockStarted == 0 || numOfTimeMockStarted >= 6){
+                        showInterstitialAds();
+                        numOfTimeMockStarted = 0;
+                    }
+                    numOfTimeMockStarted++;
+                    if(numOfTimeMockStarted == 3){
+                        locaIntetitials();
+                    }
+
                 }
             }, 2000);
 
@@ -626,7 +655,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void showDialogFavLocations() {
         final Dialog dialog_start = new Dialog(this,
-                android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
+                R.style.AppTheme_NoActionBar);
         dialog_start.setCancelable(true);
         dialog_start.setContentView(R.layout.dialog_for_fav_location);
 
@@ -906,6 +935,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             view.setVisibility(View.GONE);
             autocompleteFragment.setText("");
         } else {
+            numOfTimeMockStarted = 0;
             super.onBackPressed();
         }
     }
@@ -947,7 +977,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 stopService(new Intent(MapsActivity.this, joyStick.class));
                 if (locationManager != null)
                     locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
-                Toast.makeText(MapsActivity.this, "Mocking stopped successfully.", Toast.LENGTH_LONG).show();
+               // Toast.makeText(MapsActivity.this, "Mocking stopped successfully.", Toast.LENGTH_LONG).show();
                 dialog.cancel();
 
             }
@@ -992,6 +1022,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
             Log.d("TAG", "The interstitial wasn't loaded yet.");
         }
+    }
+
+    private void locaIntetitials(){
+        mInterstitialAd = new InterstitialAd(this);
+        mInterstitialAd.setAdUnitId(getResources().getString(R.string.intertitial_test_ad_unit_id));
+        AdRequest adRequestInterstitial = new AdRequest.Builder().addTestDevice(
+                "554FD1C059BF37BF1981C59FF9E1DAE0").build();
+        mInterstitialAd.loadAd(adRequestInterstitial);
     }
 
     private ProgressDialog progressDialog;
