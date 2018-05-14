@@ -86,7 +86,7 @@ public class joyStick extends Service {
         Intent notificationIntent = new Intent(joyStick.this, MapsActivity.class);
 
 
-        int importance = NotificationManager.IMPORTANCE_HIGH;
+        int importance = NotificationManager.IMPORTANCE_LOW;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel mChannel = mNotificationManager.getNotificationChannel("com.app.fakegps");
             if (mChannel == null) {
@@ -96,7 +96,7 @@ public class joyStick extends Service {
             }
         }
 
-       /* PendingIntent intent = PendingIntent.getActivity(this, 0,
+        PendingIntent intent = PendingIntent.getActivity(this, 0,
                 notificationIntent, 0);
         NotificationCompat.Builder nBuilder = new NotificationCompat.Builder(this, "com.app.fakegps")
                 .setSmallIcon(R.mipmap.ic_launcher) // notification icon
@@ -109,7 +109,12 @@ public class joyStick extends Service {
                         R.mipmap.ic_launcher));
         Notification notification = nBuilder.build();
 
+        notification.contentIntent = intent;
+        notification.flags = Notification.FLAG_NO_CLEAR;
+        notification.defaults = 0;
+        mNotificationManager.notify(001, notification);
 
+/*
         notification.contentIntent = intent;
 
         notification.flags = Notification.FLAG_NO_CLEAR;
@@ -160,23 +165,23 @@ public class joyStick extends Service {
 
             @Override
             public void onDrag(float degrees, float offset) {
-               // Log.d("DEBUG_d",String.valueOf(degrees));
+                // Log.d("DEBUG_d",String.valueOf(degrees));
                 if (degrees < 0) {
                     degrees = degrees + 360;
                 }
-               // Log.d("DEBUG_d2",String.valueOf(degrees));
-                if(degrees >= 0 && degrees < 90){
+                // Log.d("DEBUG_d2",String.valueOf(degrees));
+                if (degrees >= 0 && degrees < 90) {
                     degrees = 90 - degrees;
-                }else if(degrees > 270 && degrees < 360){
+                } else if (degrees > 270 && degrees < 360) {
                     degrees = 90 + (360 - degrees);
-                }else if(degrees > 180 && degrees < 270){
+                } else if (degrees > 180 && degrees < 270) {
                     degrees = 180 + (270 - degrees);
-                }else if(degrees > 90 && degrees < 180){
-                    degrees =  270  + ( 180 - degrees);
+                } else if (degrees > 90 && degrees < 180) {
+                    degrees = 270 + (180 - degrees);
                 }
                 angle = degrees;
 
-               // Log.d("DEBUG",String.valueOf(angle));
+                // Log.d("DEBUG",String.valueOf(angle));
             }
 
             @Override
@@ -394,7 +399,8 @@ public class joyStick extends Service {
     @Override
     public void onDestroy() {
         isIntrupted = true;
-
+        NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(001);
         if (joystickobj != null) windowManager.removeView(joystickobj);
         super.onDestroy();
     }
